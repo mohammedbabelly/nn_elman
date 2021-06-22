@@ -36,9 +36,9 @@ void forward(List<double> inputs, {double desired}) {
     var temp = [];
     for (var i in inputs) temp.add(i);
     inputs.addAll(contextInitValues);
-    if (inputs.length != 12) {
-      print('hiiii');
-    }
+    // if (inputs.length != 12) {
+    //   print('hiiii');
+    // }
   }
   nn.layers[0] = Layer(inputs);
 
@@ -61,6 +61,7 @@ void forward(List<double> inputs, {double desired}) {
       } else {
         //output layer
         output = utils.sigmoid(sum);
+        // output = utils.purelin(sum);
       }
 
       nn.layers[i].neurons[j].value = output;

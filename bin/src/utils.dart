@@ -19,7 +19,6 @@ double sigmoid(double x) {
 
 // relu Function
 double relu(double x) {
-  print(x);
   return x > 0.0 ? x : 0.0;
 }
 

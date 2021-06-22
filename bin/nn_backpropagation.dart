@@ -56,6 +56,8 @@ void main(List<String> arguments) async {
 }
 
 void predict() async {
+  var success = 0;
+  var all = 0;
   var datapredict = await loadDataset('test.txt');
   for (var i in datapredict.pairs) {
     forward(i.input_data);
@@ -69,6 +71,11 @@ void predict() async {
     // for (int i = 0; i < out.length; i++) {
     //   if (out[i] == sortedOut[1]) predictIndex = i + 1;
     // }
+    all++;
+    if (out.first > 0.5) {
+      //one prediction
+      if (desired.first == 1) success++;
+    } else if (desired.first == 0) success++;
     print('predict: ' +
         utils.deNormalizeData(out).toString() +
         ", desired: $desired}");
@@ -76,6 +83,7 @@ void predict() async {
     //     utils.deNormalizeData(out).toString() +
     //     ", desired: $desired}");
   }
+  print('accurecy = ${(success * 100) / all}');
 }
 
 Future<Dataset> loadDataset(filename, {bool write = false}) async {
