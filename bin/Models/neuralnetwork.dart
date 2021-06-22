@@ -25,6 +25,21 @@ class NeuralNetwork {
 
 void forward(List<double> inputs, {double desired}) {
   // Bring the inputs into the input layer
+  List<double> contextInitValues =
+      List<double>.generate(context_n, (index) => utils.randomWeight(0, 1));
+
+  if (inputs.length != input_n) {
+    for (int i = 0; i < nn.layers[1].neurons.length; i++) {
+      nn.layers[0].neurons[(input_n) + i].value = contextInitValues[i];
+    }
+  } else {
+    var temp = [];
+    for (var i in inputs) temp.add(i);
+    inputs.addAll(contextInitValues);
+    if (inputs.length != 12) {
+      print('hiiii');
+    }
+  }
   nn.layers[0] = Layer(inputs);
 
   // Forward propagation
@@ -40,7 +55,14 @@ void forward(List<double> inputs, {double desired}) {
                 .weights_old[k]; //the weight bettween me (j) and the prev (k)
       }
       sum += nn.layers[i].neurons[j].bias * nn.layers[i].neurons[j].biasWeight;
-      var output = utils.sigmoid(sum);
+      var output = 0.0;
+      if (i == 1) {
+        output = utils.tansig(sum);
+      } else {
+        //output layer
+        output = utils.sigmoid(sum);
+      }
+
       nn.layers[i].neurons[j].value = output;
       if (desired != null)
         sumSqError += math.pow((desired - output), 2).toDouble();
@@ -100,6 +122,7 @@ void backward(double learning_rate, Pair datas) {
       nn.layers[i].neurons[j].biasWeight = nn.layers[i].neurons[j].biasWeight +
           learning_rate * nn.layers[i].neurons[j].bias * delta;
     }
+    _copyHiddenValuesToContext();
   }
 
   // Update all the weights
@@ -107,6 +130,12 @@ void backward(double learning_rate, Pair datas) {
     for (int j = 0; j < nn.layers[i].neurons.length; j++) {
       nn.layers[i].neurons[j].updateWeights();
     }
+  }
+}
+
+void _copyHiddenValuesToContext() {
+  for (int i = 0; i < nn.layers[1].neurons.length; i++) {
+    nn.layers[0].neurons[(input_n) + i] = nn.layers[1].neurons[i];
   }
 }
 

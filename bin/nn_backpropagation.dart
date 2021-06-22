@@ -11,15 +11,18 @@ var input_n = 4;
 var output_n = 1;
 var layers_n = 3;
 var hidden_layer_n = 8;
+var context_n = hidden_layer_n;
 var datasetName = "banknote";
 
 void main(List<String> arguments) async {
+  print('ELMAN');
   Neuron.setRange(0, 1);
 
   nn = NeuralNetwork([
-    Layer([]),
-    Layer.hidden(hidden_layer_n, input_n,
-        ws: _generateWeights(input_n, hidden_layer_n),
+    Layer([]), //input
+    Layer.hidden(hidden_layer_n, input_n + context_n,
+        ws: _generateWeights(input_n + context_n, hidden_layer_n,
+            onesForContext: true),
         biasesWeights: _generateBiasWeights(hidden_layer_n),
         bias: _generateBiasValue()),
     Layer.hidden(output_n, hidden_layer_n,
@@ -133,14 +136,18 @@ List<double> _encodeOutPut(int last) {
   return res;
 }
 
-List<List<double>> _generateWeights(int fi, int n) {
+List<List<double>> _generateWeights(int fi, int n,
+    {bool onesForContext = false}) {
   List<List<double>> res = [];
   for (int i = 0; i < n; i++) {
     List<double> iRes = [];
     for (int j = 0; j < fi; j++) {
-      var r = -2.4 / fi;
       iRes.add(utils.randomWeight((-2.4 / fi), (2.4 / fi)));
     }
+    if (onesForContext)
+      for (int i = input_n; i < n; i++) {
+        iRes[i] = 1;
+      }
     res.add(iRes);
   }
   return res;

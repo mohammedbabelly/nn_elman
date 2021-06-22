@@ -28,6 +28,10 @@ double tanh(double x) {
   return (_exp(x) - _exp(-x)) / (_exp(x) + _exp(-x));
 }
 
+double tansig(double x) => (1 / (1 + _exp(-2 * x))) - 1;
+
+double purelin(double x) => x;
+
 double _exp(x) => math.pow(math.e, -1 * x);
 // threshold Function
 double threshold(value, threshold) {
