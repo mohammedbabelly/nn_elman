@@ -3,14 +3,18 @@ import 'dart:math' as math;
 var maxValue = 0.0;
 var minValue = 0.0;
 // Random double between min - max
-double randomWeight(int min, int max) {
+double randomWeight(double min, double max) {
+  // return 0.0;
   math.Random rand = new math.Random();
-  return rand.nextDouble() * (max - min) + min;
+  var res = rand.nextDouble() * (max - min) + min;
+  return res;
 }
 
 // Sigmoid Function
 double sigmoid(double x) {
-  return (1 / (1 + math.pow(math.e, -1 * x))).toDouble();
+  var res = (1 / (1 + math.pow(math.e, -1 * x))).toDouble();
+  // print(res);
+  return res;
 }
 
 // relu Function
@@ -50,19 +54,19 @@ double sumSquaredError(List<double> outputs, List<double> targets) {
 }
 
 List<double> normalizeData(List<double> data) {
-  if (maxValue == minValue) return data;
-  for (var i = 0; i < data.length; i++) {
-    var res = (data[i] - minValue) / (maxValue - minValue);
-    data[i] = res;
-  }
+  // if (maxValue == minValue) return data;
+  // for (var i = 0; i < data.length; i++) {
+  //   var res = (data[i] - minValue) / (maxValue - minValue);
+  //   data[i] = res;
+  // }
   return data;
 }
 
 List<double> deNormalizeData(List<double> data) {
-  if (maxValue == minValue) return data;
-  for (var i = 0; i < data.length; i++) {
-    var res = (data[i] * (maxValue - minValue)) + minValue;
-    data[i] = res;
-  }
+  // if (maxValue == minValue) return data;
+  // for (var i = 0; i < data.length; i++) {
+  //   var res = (data[i] * (maxValue - minValue)) + minValue;
+  //   data[i] = res;
+  // }
   return data;
 }

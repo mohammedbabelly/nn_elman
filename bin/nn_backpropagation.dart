@@ -1,65 +1,82 @@
 import 'dart:io';
-import 'dart:math';
 import 'Models/dataset.dart';
 import 'Models/layer.dart';
 import 'Models/neuralnetwork.dart';
 import 'Models/neuron.dart';
 import 'src/utils.dart' as utils;
 
-var learningRate = 0.05;
-var epochs = 100000;
-var input_n = 7;
+var learningRate = 0.01;
+var epochs = 100;
+var input_n = 4;
 var output_n = 1;
 var layers_n = 3;
-var datasetName = "wheat";
+var hidden_layer_n = 8;
+var datasetName = "banknote";
+
 void main(List<String> arguments) async {
-  var afterData = <double>[];
   Neuron.setRange(0, 1);
 
-  var nn = NeuralNetwork(3); // 3 layers: 1 input + 2 hidden + 1 output
-  // No need to add input layer, it will be added from dataset automatically
-  // Hidden layer / 16 neurons each have 4 weights (connections)
-  nn.layers[1] = Layer.hidden(8, input_n);
-  // Output layer / 1 neuron with 10 weights (connections)
-  nn.layers[2] = Layer.hidden(output_n, 8);
+  nn = NeuralNetwork([
+    Layer([]),
+    Layer.hidden(hidden_layer_n, input_n,
+        ws: _generateWeights(input_n, hidden_layer_n),
+        biasesWeights: _generateBiasWeights(hidden_layer_n),
+        bias: _generateBiasValue()),
+    Layer.hidden(output_n, hidden_layer_n,
+        ws: _generateWeights(hidden_layer_n, output_n),
+        biasesWeights: _generateBiasWeights(output_n),
+        bias: _generateBiasValue())
+  ]);
 
-  var dataset = await loadDataset('train.txt');
+  var dataset = await loadDataset('train.txt', write: true);
 
   print('training...');
-  train(nn, dataset, epochs, learningRate);
+  train(dataset, epochs, learningRate);
 
   print('============');
   print('Output after training');
   print('============');
   for (var i in dataset.pairs) {
-    forward(nn, i.input_data);
+    forward(i.input_data);
     // print('inputs ${i.input_data}');
-    var out = nn.layers[layers_n - 1].neurons[output_n - 1].value;
-    print('output: ' + utils.deNormalizeData([out]).toString());
-    afterData.add(utils.deNormalizeData([out])[output_n - 1]);
+    var out = nn.layers[layers_n - 1].neurons.map((e) => e.value).toList();
+    // var out = nn.layers[layers_n - 1].neurons[0].value;
+    print('output: ' +
+        utils.deNormalizeData(out).toString() +
+        ' desired = ${i.output_data}');
+    // afterData.add(utils.deNormalizeData(out)[output_n - 1]);
   }
   print('============');
   print('Predictiong');
   print('============');
-  predict(nn);
+  predict();
 }
 
-void predict(NeuralNetwork nn) async {
+void predict() async {
   var datapredict = await loadDataset('test.txt');
   for (var i in datapredict.pairs) {
-    forward(nn, i.input_data);
+    forward(i.input_data);
     // print('for: ${i.input_data}');
-    var out = nn.layers[layers_n - 1].neurons[output_n - 1].value;
+    var out = nn.layers[layers_n - 1].neurons.map((e) => e.value).toList();
+    var desired = utils.deNormalizeData(i.output_data);
+    // var sortedOut = <double>[];
+    // out.forEach((e) => sortedOut.add(e));
+    // var predictIndex = -1;
+    // sortedOut.sort();
+    // for (int i = 0; i < out.length; i++) {
+    //   if (out[i] == sortedOut[1]) predictIndex = i + 1;
+    // }
     print('predict: ' +
-        utils.deNormalizeData([out])[output_n - 1].toString() +
-        " the desired: ${utils.deNormalizeData([
-              i.output_data[output_n - 1]
-            ])}");
+        utils.deNormalizeData(out).toString() +
+        ", desired: $desired}");
+    // print('predict: ' +
+    //     utils.deNormalizeData(out).toString() +
+    //     ", desired: $desired}");
   }
 }
 
-Future<Dataset> loadDataset(filename) async {
-  var dataset = Dataset();
+Future<Dataset> loadDataset(filename, {bool write = false}) async {
+  var dataset = Dataset([]);
   var data = await File('datasets/$datasetName/$filename').readAsString();
   var allSamples = <double>[];
   for (var rowData in data.split('\n')) {
@@ -71,18 +88,70 @@ Future<Dataset> loadDataset(filename) async {
       if (feature == '') continue;
       sampleInput.add(double.parse(feature));
     }
+
+    // sampleOutput.addAll(_encodeOutPut(sampleInput.last.toInt()));
     sampleOutput.add(sampleInput.last);
     sampleInput.removeLast();
     allSamples.addAll(sampleInput + sampleOutput);
     dataset.pairs.add(Pair(sampleInput, sampleOutput));
   }
-  utils.minValue = allSamples.reduce(min);
-  utils.maxValue = allSamples.reduce(max);
-  for (var i = 0; i < dataset.pairs.length; i++) {
-    dataset.pairs[i].input_data =
-        utils.normalizeData(dataset.pairs[i].input_data);
-    dataset.pairs[i].output_data =
-        utils.normalizeData(dataset.pairs[i].output_data);
-  }
+  // utils.minValue = allSamples.reduce(min);
+  // utils.maxValue = allSamples.reduce(max);
+  // for (var i = 0; i < dataset.pairs.length; i++) {
+  //   dataset.pairs[i].input_data =
+  //       utils.normalizeData(dataset.pairs[i].input_data);
+  //   dataset.pairs[i].output_data =
+  //       utils.normalizeData(dataset.pairs[i].output_data);
+  // }
+  dataset.pairs.shuffle();
+  // var toWrite = '';
+  // for (var i in dataset.pairs) toWrite += i.output_data[0].toString() + '\n';
+  // if (write)
+  //   await File('datasets/$datasetName/test/test.txt').writeAsString(toWrite);
   return dataset;
 }
+
+List<double> _encodeOutPut(int last) {
+  var res = <double>[];
+  switch (last) {
+    case 1:
+      {
+        res = [1.0, 0.0, 0.0];
+        break;
+      }
+    case 2:
+      {
+        res = [0.0, 1.0, 0.0];
+        break;
+      }
+    case 3:
+      {
+        res = [0.0, 0.0, 1.0];
+        break;
+      }
+  }
+  return res;
+}
+
+List<List<double>> _generateWeights(int fi, int n) {
+  List<List<double>> res = [];
+  for (int i = 0; i < n; i++) {
+    List<double> iRes = [];
+    for (int j = 0; j < fi; j++) {
+      var r = -2.4 / fi;
+      iRes.add(utils.randomWeight((-2.4 / fi), (2.4 / fi)));
+    }
+    res.add(iRes);
+  }
+  return res;
+}
+
+List<double> _generateBiasWeights(int fi) {
+  var res = <double>[];
+  for (int i = 0; i < fi; i++) {
+    res.add(utils.randomWeight((-2.4 / fi), (2.4 / fi)));
+  }
+  return res;
+}
+
+double _generateBiasValue() => (utils.randomWeight(-1, 1));

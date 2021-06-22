@@ -1,15 +1,21 @@
+import '../nn_backpropagation.dart';
 import 'dataset.dart';
 import 'layer.dart';
 import 'neuron.dart';
 import '../src/utils.dart' as utils;
+import 'dart:math' as math;
+
+const loss = 0.001;
+double sumSqError = 0.0;
+NeuralNetwork nn;
 
 class NeuralNetwork {
   List<Layer> layers = [];
   int size; //# of layers
 
-  NeuralNetwork(int size) {
-    this.size = size;
-    this.layers.length = this.size;
+  NeuralNetwork(List<Layer> l) {
+    this.size = l.length;
+    this.layers = l;
   }
 
   int getSize() {
@@ -17,7 +23,7 @@ class NeuralNetwork {
   }
 }
 
-void forward(NeuralNetwork nn, List<double> inputs) {
+void forward(List<double> inputs, {double desired}) {
   // Bring the inputs into the input layer
   nn.layers[0] = Layer(inputs);
 
@@ -31,14 +37,18 @@ void forward(NeuralNetwork nn, List<double> inputs) {
         //all neurons in the prev layer
         sum += nn.layers[i - 1].neurons[k].value * //value of the prev neuron
             nn.layers[i].neurons[j]
-                .weights[k]; //the weight bettween me (j) and the prev (k)
+                .weights_old[k]; //the weight bettween me (j) and the prev (k)
       }
-      nn.layers[i].neurons[j].value = utils.sigmoid(sum);
+      sum += nn.layers[i].neurons[j].bias * nn.layers[i].neurons[j].biasWeight;
+      var output = utils.sigmoid(sum);
+      nn.layers[i].neurons[j].value = output;
+      if (desired != null)
+        sumSqError += math.pow((desired - output), 2).toDouble();
     }
   }
 }
 
-void backward(NeuralNetwork nn, double learning_rate, Pair datas) {
+void backward(double learning_rate, Pair datas) {
   int number_layers = nn.layers.length;
   int output_layer_index = number_layers - 1;
 
@@ -47,7 +57,8 @@ void backward(NeuralNetwork nn, double learning_rate, Pair datas) {
     //the neurons at the output layer
     double output = nn.layers[output_layer_index].neurons[i].value;
     double target = datas.output_data[i];
-    double e = output - target;
+    double e = target - output;
+    // if (e <= loss) continue;
     double delta = e * (output * (1 - output));
     nn.layers[output_layer_index].neurons[i].gradient = delta;
 
@@ -58,9 +69,13 @@ void backward(NeuralNetwork nn, double learning_rate, Pair datas) {
       double previous_output =
           nn.layers[output_layer_index - 1].neurons[j].value;
       double error = delta * previous_output;
-      nn.layers[output_layer_index].neurons[i].weights_old[j] =
-          nn.layers[output_layer_index].neurons[i].weights[j] -
-              learning_rate * error;
+      double oldW = nn.layers[output_layer_index].neurons[i].weights_old[j];
+      nn.layers[output_layer_index].neurons[i].weights[j] =
+          oldW + learning_rate * error;
+      //update bias weight
+      nn.layers[output_layer_index].neurons[i].biasWeight = nn
+              .layers[output_layer_index].neurons[i].biasWeight +
+          learning_rate * nn.layers[output_layer_index].neurons[i].bias * delta;
     }
   }
 
@@ -78,9 +93,12 @@ void backward(NeuralNetwork nn, double learning_rate, Pair datas) {
         // And for all their weights
         double previous_output = nn.layers[i - 1].neurons[k].value;
         double error = delta * previous_output;
-        nn.layers[i].neurons[j].weights_old[k] =
-            nn.layers[i].neurons[j].weights[k] - learning_rate * error;
+        nn.layers[i].neurons[j].weights[k] =
+            nn.layers[i].neurons[j].weights_old[k] + learning_rate * error;
       }
+      //update bias weight
+      nn.layers[i].neurons[j].biasWeight = nn.layers[i].neurons[j].biasWeight +
+          learning_rate * nn.layers[i].neurons[j].bias * delta;
     }
   }
 
@@ -98,18 +116,29 @@ double sumGradient(NeuralNetwork nn, int n_index, int l_index) {
   Layer current_layer = nn.layers[l_index];
   for (int i = 0; i < current_layer.neurons.length; i++) {
     Neuron current_neuron = current_layer.neurons[i];
-    gradient_sum += current_neuron.weights[n_index] * current_neuron.gradient;
+    gradient_sum +=
+        current_neuron.weights_old[n_index] * current_neuron.gradient;
   }
   return gradient_sum;
 }
 
 // This function is used to train
-void train(NeuralNetwork nn, Dataset dt, int epochs, double learning_rate) {
+void train(Dataset dt, int epochs, double learning_rate) {
+  epochsLoop:
   for (int i = 0; i < epochs; i++) {
-    for (int j = 0; j < dt.getLength(); j++) {
-      forward(nn, dt.pairs[j].input_data);
-      backward(nn, learning_rate, dt.pairs[j]);
+    // print("epoch:  $i");
+    for (int j = 0; j < dt.pairs.length; j++) {
+      forward(dt.pairs[j].input_data, desired: dt.pairs[j].output_data[0]);
+      if (sumSqError <= loss) {
+        print('breaked at epoch ${i + 1}');
+        break epochsLoop;
+      }
+      // else
+      // print('sumSqError = $sumSqError');
+      // var actual = nn.layers[layers_n - 1].neurons[0].value;
+      // var desired = dt.pairs[j].output_data[0];
+      // if (desired - actual <= loss) continue;
+      backward(learning_rate, dt.pairs[j]);
     }
-    if (i % 100 == 0) print("epoch:  $i");
   }
 }
